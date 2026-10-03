@@ -1,0 +1,13 @@
+Recommended first scans
+
+1) Karachi clothing:
+python lead_scraper_v2.py --cities Karachi --categories clothing --pages 3 --output karachi_clothing.csv
+
+2) Karachi high-intent:
+python lead_scraper_v2.py --cities Karachi --categories clothing abaya cosmetics perfumes shoes jewelry --pages 2 --output karachi.csv
+
+3) Pakistan:
+python lead_scraper_v2.py --cities Karachi Lahore Islamabad Rawalpindi Faisalabad Multan Peshawar Hyderabad --categories clothing cosmetics shoes jewelry kidswear abaya perfumes "home decor" bakery --pages 2 --output pakistan.csv
+
+4) JSON for your Laravel importer:
+python lead_scraper_v2.py --cities Karachi --categories clothing --pages 2 --output leads.csv --json-output leads.json

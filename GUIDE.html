@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lead Scraper v2 Guide</title>
+<style>
+:root{--bg:#fafaf8;--card:#fff;--text:#1d1d1b;--muted:#5f5e5a;--line:#e3e2dc;--accent:#0f6e56;--accent-bg:#e6f4ef;--code:#f1f0ea;--warn:#fdf3dd;--warnline:#e5c46b}
+@media (prefers-color-scheme:dark){:root{--bg:#161614;--card:#1f1f1c;--text:#ecebe6;--muted:#a3a19a;--line:#33332f;--accent:#5cc7a4;--accent-bg:#1b2d27;--code:#2a2a26;--warn:#2d2815;--warnline:#7a6628}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:24px 16px 64px}
+header{padding:32px 0 8px}
+h1{font-size:2rem;margin:0 0 8px}
+h2{font-size:1.35rem;margin:40px 0 12px;padding-top:8px;border-top:1px solid var(--line)}
+h3{font-size:1.05rem;margin:20px 0 6px}
+p{margin:8px 0}
+.lead{color:var(--muted);font-size:1.1rem}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
+nav a{color:var(--accent);text-decoration:none;background:var(--accent-bg);padding:4px 12px;border-radius:99px;font-size:.9rem}
+code{background:var(--code);padding:1px 6px;border-radius:4px;font:.9em ui-monospace,Consolas,monospace}
+pre{background:var(--code);padding:14px;border-radius:8px;overflow-x:auto;margin:10px 0}
+pre code{padding:0;background:none}
+table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.93rem;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--accent-bg)}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 52px;margin:10px 0;position:relative}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--bg);display:grid;place-items:center;font-weight:600;font-size:.85rem}
+.note{background:var(--warn);border:1px solid var(--warnline);border-radius:8px;padding:10px 14px;margin:14px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h3{margin-top:0}
+footer{margin-top:48px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Social Commerce Lead Scraper v2</h1>
+  <p class="lead">Find Pakistani businesses that sell on Instagram and Facebook but have no website, then export them as ready-to-use lead lists.</p>
+</header>
+<nav>
+  <a href="#purpose">Purpose</a><a href="#how">How it works</a><a href="#engines">Engines</a><a href="#setup">Setup</a><a href="#brave">Brave key</a><a href="#usage">Usage</a><a href="#output">Output</a><a href="#scoring">Scoring</a><a href="#cost">Cost</a><a href="#limits">Limits</a><a href="#trouble">Troubleshooting</a>
+</nav>
+
+<h2 id="purpose">Purpose</h2>
+<p>Many small Pakistani shops take orders by DM or WhatsApp and never build a website. They are natural prospects for web design, ecommerce stores and SaaS tools, but there is no directory of them. v2 builds one from public search results.</p>
+<div class="grid">
+  <div class="card"><h3>Finds</h3><p>Instagram and Facebook business profiles showing ordering language such as "DM to order", "COD available" or "PKR".</p></div>
+  <div class="card"><h3>Checks</h3><p>Whether the business has an independent website, and whether that site is ecommerce or a brochure site.</p></div>
+  <div class="card"><h3>Delivers</h3><p>A scored, de-duplicated list split into <b>No Website</b> and <b>Website</b> leads, as CSV, Excel and SQLite.</p></div>
+</div>
+<p>It does <b>not</b> log in to Instagram or Facebook, bypass bot protection or use private APIs. It reads only what a search engine already shows publicly.</p>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><b>Discover.</b> For every city &times; category it builds 18 queries: 8 buying phrases on Instagram and on Facebook, plus 2 plain queries. Example: <code>site:instagram.com "Karachi" "clothing" "DM to order"</code></li>
+  <li><b>Extract.</b> Keeps real profile URLs only (posts, reels and stories are dropped) and pulls the business name, Pakistani mobile number (03xx or +92 3xx), email and WhatsApp number from titles and snippets.</li>
+  <li><b>Merge.</b> The same profile found by several queries becomes one lead.</li>
+  <li><b>Social score.</b> 0&ndash;100 for how strongly the business sells through social media.</li>
+  <li><b>Local lookup</b> (Brave only). Adds address, phone and website from Brave local places.</li>
+  <li><b>Website check.</b> Collects candidate domains (local result, URLs in snippets, a search for the business name and city), loads up to 10, and classes the first live one as <code>ecommerce</code>, <code>business/brochure</code> or <code>unknown</code>. If nothing loads the lead is <code>NO_WEBSITE_LIKELY</code>.</li>
+  <li><b>Final score and export.</b> Leads are sorted by score and written to CSV, Excel and SQLite.</li>
+</ol>
+
+<h2 id="engines">Search engines</h2>
+<table>
+<tr><th></th><th><code>--engine brave</code> (default)</th><th><code>--engine ddg</code></th></tr>
+<tr><td>Key needed</td><td>Yes (<code>BRAVE_SEARCH_API_KEY</code>)</td><td>No</td></tr>
+<tr><td>Cost</td><td>About US$5 per 1,000 requests (verify on the dashboard)</td><td>Free</td></tr>
+<tr><td>Speed</td><td>Fast</td><td>Slow: 3 s pause between searches</td></tr>
+<tr><td>Local places lookup</td><td>Yes</td><td>No (skipped automatically)</td></tr>
+<tr><td>Result quality</td><td>Cleaner, longer snippets</td><td>More directory pages, shorter snippets</td></tr>
+<tr><td>Rate limits</td><td>Plan based</td><td>Soft blocks are common; the tool retries with back-off</td></tr>
+</table>
+
+<h2 id="setup">Setup</h2>
+<p>Requires Python 3.10 or newer.</p>
+<pre><code>python -m venv .venv
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # Linux / macOS
+pip install -r requirements.txt</code></pre>
+<p>For Brave only, copy <code>.env.example</code> to <code>.env</code> and set:</p>
+<pre><code>BRAVE_SEARCH_API_KEY=your_key_here</code></pre>
+<p>Never commit your <code>.env</code> file.</p>
+
+<h2 id="brave">Getting a Brave API key</h2>
+<ol class="steps">
+  <li>Register at <a href="https://api-dashboard.search.brave.com/register">api-dashboard.search.brave.com/register</a>.</li>
+  <li>Add a credit card. It is required even for the free credits, and it becomes a live billing card once the free credit is used up.</li>
+  <li>Choose the Search plan, open <b>API Keys</b> and generate a subscription token.</li>
+  <li>Paste it into <code>.env</code>. Set a spending cap in the dashboard if one is offered.</li>
+</ol>
+
+<h2 id="usage">Usage</h2>
+<p>Always start with a small test:</p>
+<pre><code>python lead_scraper_v2.py --cities Karachi --categories clothing --pages 1</code></pre>
+<p>Free, no key:</p>
+<pre><code>python lead_scraper_v2.py --engine ddg --cities Karachi --categories clothing --pages 1</code></pre>
+<p>Bigger scan:</p>
+<pre><code>python lead_scraper_v2.py --cities Karachi Lahore Islamabad --categories clothing abaya cosmetics --pages 2 --skip-local --output pakistan.csv</code></pre>
+<table>
+<tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
+<tr><td><code>--cities</code></td><td>Karachi</td><td>One or more cities</td></tr>
+<tr><td><code>--categories</code></td><td>clothing</td><td>One or more niches (quote multi-word ones)</td></tr>
+<tr><td><code>--pages</code></td><td>2</td><td>Result pages per query</td></tr>
+<tr><td><code>--per-query</code></td><td>20</td><td>Results per page (max 20)</td></tr>
+<tr><td><code>--output</code></td><td>leads.csv</td><td>Base name for the output files</td></tr>
+<tr><td><code>--json-output</code></td><td>none</td><td>Also write JSON (for example for a Laravel importer)</td></tr>
+<tr><td><code>--db</code></td><td>leads.sqlite</td><td>SQLite file used to de-duplicate across runs</td></tr>
+<tr><td><code>--engine</code></td><td>brave</td><td><code>brave</code> or <code>ddg</code></td></tr>
+<tr><td><code>--skip-local</code></td><td>off</td><td>Skip Brave local lookup (saves about half the enrichment calls)</td></tr>
+<tr><td><code>--skip-website</code></td><td>off</td><td>Skip the website check (faster; leads stay "no website")</td></tr>
+</table>
+
+<h2 id="output">Output</h2>
+<p>With <code>--output leads.csv</code>:</p>
+<table>
+<tr><th>File</th><th>Contents</th></tr>
+<tr><td><code>leads.csv</code></td><td>All leads</td></tr>
+<tr><td><code>leads_no_website.csv</code></td><td>Leads with no detected website: your main prospects</td></tr>
+<tr><td><code>leads_website.csv</code></td><td>Leads where a website was found</td></tr>
+<tr><td><code>leads.xlsx</code></td><td>The same two lists as sheets <b>No Website</b> and <b>Website</b></td></tr>
+<tr><td><code>leads.sqlite</code></td><td>Persistent store keyed by profile URL</td></tr>
+<tr><td>JSON</td><td>Only with <code>--json-output</code></td></tr>
+</table>
+<p><b>Columns:</b> business_name, instagram_url, facebook_url, other_social_url, city, category, phone, whatsapp, email, website, website_type, website_status, social_selling_score, website_confidence, local_business, local_phone, local_website, local_address, lead_score, evidence, source_queries, snippets.</p>
+<div class="note">The "No Website" list also includes leads that were never checked, for example when you pass <code>--skip-website</code>.</div>
+
+<h2 id="scoring">Scoring</h2>
+<h3>Social selling score (max 100)</h3>
+<table>
+<tr><th>Signal</th><th>Points</th></tr>
+<tr><td>Instagram profile</td><td>+25</td></tr><tr><td>Ordering language (DM / WhatsApp / inbox to order)</td><td>+25</td></tr>
+<tr><td>WhatsApp mentioned</td><td>+15</td></tr><tr><td>Facebook page</td><td>+10</td></tr>
+<tr><td>COD</td><td>+10</td></tr><tr><td>Delivery</td><td>+10</td></tr><tr><td>Price / PKR</td><td>+10</td></tr>
+<tr><td>Phone, email, local business match</td><td>+5 each</td></tr>
+</table>
+<h3>Lead score (0&ndash;100)</h3>
+<p>Starts from the social score. No website <b>+15</b>; website found <b>&minus;30</b>; ecommerce site <b>&minus;70</b>; WhatsApp number +5; local match +5. A <b>strong lead</b> is <code>NO_WEBSITE_LIKELY</code> with a score of 60 or more.</p>
+
+<h2 id="cost">Cost estimate (Brave)</h2>
+<p>Requests &asymp; 18 &times; pages per city/category pair, plus about 2 per lead (local lookup and website search). Figures assume about 40 leads per pair, which is a guess.</p>
+<table>
+<tr><th>Run</th><th>Requests</th><th>Approx. cost</th></tr>
+<tr><td>1 city, 1 category, <code>--pages 1</code></td><td>~100</td><td>~$0.50</td></tr>
+<tr><td>1 city, 5 categories, <code>--pages 2</code></td><td>~700</td><td>~$3.50</td></tr>
+<tr><td>8 cities &times; 9 categories, <code>--pages 2</code></td><td>~8,400</td><td>~$40</td></tr>
+</table>
+<p>Use <code>--skip-local</code>, scale one city at a time, and set a spending cap. <code>--engine ddg</code> costs nothing.</p>
+
+<h2 id="limits">Limitations</h2>
+<ul>
+<li><code>NO_WEBSITE_LIKELY</code> is a heuristic, not proof. New, unindexed or private sites can be missed.</li>
+<li>Only search snippets are read, not full profiles, so many leads have no phone or email.</li>
+<li>The website check can take up to about 8 s per candidate domain, so big runs are slow.</li>
+<li>The phone pattern matches Pakistani mobiles only, not landlines.</li>
+<li>DuckDuckGo may return directory pages (for example "Karachi Clothing Shops") instead of single businesses.</li>
+</ul>
+<div class="note"><b>Responsible use.</b> Contact details are public, but using them for outreach is subject to local law, platform terms and anti-spam rules. Review leads before contacting anyone.</div>
+
+<h2 id="trouble">Troubleshooting</h2>
+<table>
+<tr><th>Problem</th><th>Fix</th></tr>
+<tr><td><code>Set BRAVE_SEARCH_API_KEY in .env</code></td><td>Create <code>.env</code> with your key, or run with <code>--engine ddg</code>.</td></tr>
+<tr><td><code>[web error] 401/403</code></td><td>The key is wrong or the plan is inactive. Check the dashboard.</td></tr>
+<tr><td><code>[web error] 429</code></td><td>Rate limit. Lower <code>--pages</code> and retry later.</td></tr>
+<tr><td><code>[ddg error] ... Ratelimit</code></td><td>DuckDuckGo is throttling you. The tool retries automatically; for large runs wait and try again, or use Brave.</td></tr>
+<tr><td>Excel file won't save</td><td>Close the previous <code>.xlsx</code> in Excel first.</td></tr>
+<tr><td>Very few leads or phone numbers</td><td>Expected from snippets alone. Try more categories or Brave.</td></tr>
+</table>
+
+<footer>Files: <code>lead_scraper_v2.py</code>, <code>requirements.txt</code>, <code>.env.example</code>, <code>config_examples.txt</code>, <code>README.md</code>, <code>GUIDE.html</code></footer>
+</div>
+</body>
+</html>

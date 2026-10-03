@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.sqlite
+leads*.csv
+leads*.xlsx
+leads*.json
+output/
+
