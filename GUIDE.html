@@ -55,18 +55,19 @@ footer{margin-top:48px;color:var(--muted);font-size:.9rem}
 
 <h2 id="how">How it works</h2>
 <ol class="steps">
-  <li><b>Discover.</b> For every city &times; category it builds 18 queries: 8 buying phrases on Instagram and on Facebook, plus 2 plain queries. Example: <code>site:instagram.com "Karachi" "clothing" "DM to order"</code></li>
+  <li><b>Discover.</b> For every city &times; category it builds 18 queries: 8 buying phrases on Instagram and on Facebook, plus 2 plain queries. With <code>--platform instagram</code> or <code>facebook</code> only that site is searched (9 queries). Only the result pages you choose with <code>--pages</code> are fetched. Example query: <code>site:instagram.com "Karachi" "clothing" "DM to order"</code></li>
   <li><b>Extract.</b> Keeps real profile URLs only (posts, reels and stories are dropped) and pulls the business name, Pakistani mobile number (03xx or +92 3xx), email and WhatsApp number from titles and snippets.</li>
   <li><b>Merge.</b> The same profile found by several queries becomes one lead.</li>
+  <li><b>Skip known.</b> Profiles already stored in the SQLite database from earlier runs are dropped, so only new profiles are enriched and existing leads are never overwritten.</li>
   <li><b>Social score.</b> 0&ndash;100 for how strongly the business sells through social media.</li>
   <li><b>Local lookup</b> (Brave only). Adds address, phone and website from Brave local places.</li>
   <li><b>Website check.</b> Collects candidate domains (local result, URLs in snippets, a search for the business name and city), loads up to 10, and classes the first live one as <code>ecommerce</code>, <code>business/brochure</code> or <code>unknown</code>. If nothing loads the lead is <code>NO_WEBSITE_LIKELY</code>.</li>
-  <li><b>Final score and export.</b> Leads are sorted by score and written to CSV, Excel and SQLite.</li>
+  <li><b>Save and export.</b> New leads are added to the SQLite database. Every output file is then rebuilt from the whole database, sorted by score, so it contains the leads from all your runs.</li>
 </ol>
 
 <h2 id="engines">Search engines</h2>
 <table>
-<tr><th></th><th><code>--engine brave</code> (default)</th><th><code>--engine ddg</code></th></tr>
+<tr><th></th><th><code>--engine brave</code></th><th><code>--engine ddg</code> (default)</th></tr>
 <tr><td>Key needed</td><td>Yes (<code>BRAVE_SEARCH_API_KEY</code>)</td><td>No</td></tr>
 <tr><td>Cost</td><td>About US$5 per 1,000 requests (verify on the dashboard)</td><td>Free</td></tr>
 <tr><td>Speed</td><td>Fast</td><td>Slow: 3 s pause between searches</td></tr>
@@ -94,37 +95,51 @@ pip install -r requirements.txt</code></pre>
 </ol>
 
 <h2 id="usage">Usage</h2>
-<p>Always start with a small test:</p>
+<p>Run the script from the folder you want the results in. Always start with a small test (free DuckDuckGo, no key):</p>
 <pre><code>python lead_scraper_v2.py --cities Karachi --categories clothing --pages 1</code></pre>
-<p>Free, no key:</p>
-<pre><code>python lead_scraper_v2.py --engine ddg --cities Karachi --categories clothing --pages 1</code></pre>
+<p>Instagram only:</p>
+<pre><code>python lead_scraper_v2.py --cities Karachi --categories clothing --pages 1 --platform instagram</code></pre>
+<p>Continue with deeper result pages later. New leads are added to your existing files:</p>
+<pre><code>python lead_scraper_v2.py --cities Karachi --categories clothing --pages 2-3 --platform instagram</code></pre>
+<p>With the Brave API (needs a key):</p>
+<pre><code>python lead_scraper_v2.py --engine brave --cities Karachi --categories clothing --pages 1</code></pre>
 <p>Bigger scan:</p>
-<pre><code>python lead_scraper_v2.py --cities Karachi Lahore Islamabad --categories clothing abaya cosmetics --pages 2 --skip-local --output pakistan.csv</code></pre>
+<pre><code>python lead_scraper_v2.py --cities Karachi Lahore Islamabad --categories clothing abaya cosmetics --pages 2 --output pakistan.csv</code></pre>
 <table>
 <tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
 <tr><td><code>--cities</code></td><td>Karachi</td><td>One or more cities</td></tr>
 <tr><td><code>--categories</code></td><td>clothing</td><td>One or more niches (quote multi-word ones)</td></tr>
-<tr><td><code>--pages</code></td><td>2</td><td>Result pages per query</td></tr>
+<tr><td><code>--pages</code></td><td>1-2</td><td>Result pages per query. <code>3</code> = pages 1 to 3, <code>2-4</code> = pages 2 to 4</td></tr>
+<tr><td><code>--platform</code></td><td>both</td><td><code>instagram</code>, <code>facebook</code> or <code>both</code>: which site to search</td></tr>
 <tr><td><code>--per-query</code></td><td>20</td><td>Results per page (max 20)</td></tr>
 <tr><td><code>--output</code></td><td>leads.csv</td><td>Base name for the output files</td></tr>
 <tr><td><code>--json-output</code></td><td>none</td><td>Also write JSON (for example for a Laravel importer)</td></tr>
-<tr><td><code>--db</code></td><td>leads.sqlite</td><td>SQLite file used to de-duplicate across runs</td></tr>
-<tr><td><code>--engine</code></td><td>brave</td><td><code>brave</code> or <code>ddg</code></td></tr>
+<tr><td><code>--db</code></td><td>leads.sqlite</td><td>Master SQLite file; leads accumulate here across runs</td></tr>
+<tr><td><code>--engine</code></td><td>ddg</td><td><code>ddg</code> (free) or <code>brave</code> (API key)</td></tr>
 <tr><td><code>--skip-local</code></td><td>off</td><td>Skip Brave local lookup (saves about half the enrichment calls)</td></tr>
 <tr><td><code>--skip-website</code></td><td>off</td><td>Skip the website check (faster; leads stay "no website")</td></tr>
 </table>
 
+<h3>Running again: page ranges and appending</h3>
+<ul>
+<li>Each run adds to the existing data instead of replacing it. Profiles already in the database are skipped; new ones are added.</li>
+<li>To go deeper, run the same command with a later range, for example <code>--pages 1</code> first, then <code>--pages 2-3</code>.</li>
+<li>To accumulate, run from the same folder and keep the same <code>--db</code> and <code>--output</code>. A different folder or file name starts a separate list.</li>
+<li>Close <code>.xlsx</code> files in Excel before a run, because they are rewritten each time.</li>
+</ul>
+
 <h2 id="output">Output</h2>
-<p>With <code>--output leads.csv</code>:</p>
+<p>Files are written to the folder you run the script from. With <code>--output leads.csv</code>:</p>
 <table>
 <tr><th>File</th><th>Contents</th></tr>
-<tr><td><code>leads.csv</code></td><td>All leads</td></tr>
+<tr><td><code>leads.csv</code></td><td>All leads from all runs</td></tr>
 <tr><td><code>leads_no_website.csv</code></td><td>Leads with no detected website: your main prospects</td></tr>
 <tr><td><code>leads_website.csv</code></td><td>Leads where a website was found</td></tr>
 <tr><td><code>leads.xlsx</code></td><td>The same two lists as sheets <b>No Website</b> and <b>Website</b></td></tr>
-<tr><td><code>leads.sqlite</code></td><td>Persistent store keyed by profile URL</td></tr>
+<tr><td><code>leads.sqlite</code></td><td>Master store keyed by profile URL; it only grows</td></tr>
 <tr><td>JSON</td><td>Only with <code>--json-output</code></td></tr>
 </table>
+<p>The CSV, Excel and JSON files are rebuilt from the whole database after every run, so they always show everything collected so far. The end-of-run summary prints <i>New leads this run</i> and <i>Total leads (all runs)</i>.</p>
 <p><b>Columns:</b> business_name, instagram_url, facebook_url, other_social_url, city, category, phone, whatsapp, email, website, website_type, website_status, social_selling_score, website_confidence, local_business, local_phone, local_website, local_address, lead_score, evidence, source_queries, snippets.</p>
 <div class="note">The "No Website" list also includes leads that were never checked, for example when you pass <code>--skip-website</code>.</div>
 
@@ -141,14 +156,14 @@ pip install -r requirements.txt</code></pre>
 <p>Starts from the social score. No website <b>+15</b>; website found <b>&minus;30</b>; ecommerce site <b>&minus;70</b>; WhatsApp number +5; local match +5. A <b>strong lead</b> is <code>NO_WEBSITE_LIKELY</code> with a score of 60 or more.</p>
 
 <h2 id="cost">Cost estimate (Brave)</h2>
-<p>Requests &asymp; 18 &times; pages per city/category pair, plus about 2 per lead (local lookup and website search). Figures assume about 40 leads per pair, which is a guess.</p>
+<p>Requests &asymp; 18 &times; number of pages per city/category pair (9 &times; with <code>--platform instagram</code> or <code>facebook</code>), plus about 2 per new lead (local lookup and website search). Figures assume both platforms and about 40 leads per pair, which is a guess. Leads already in the database cost nothing on later runs.</p>
 <table>
 <tr><th>Run</th><th>Requests</th><th>Approx. cost</th></tr>
 <tr><td>1 city, 1 category, <code>--pages 1</code></td><td>~100</td><td>~$0.50</td></tr>
 <tr><td>1 city, 5 categories, <code>--pages 2</code></td><td>~700</td><td>~$3.50</td></tr>
 <tr><td>8 cities &times; 9 categories, <code>--pages 2</code></td><td>~8,400</td><td>~$40</td></tr>
 </table>
-<p>Use <code>--skip-local</code>, scale one city at a time, and set a spending cap. <code>--engine ddg</code> costs nothing.</p>
+<p>Use <code>--skip-local</code>, <code>--platform instagram</code>, scale one city at a time, and set a spending cap. <code>--engine ddg</code> costs nothing.</p>
 
 <h2 id="limits">Limitations</h2>
 <ul>
@@ -163,7 +178,10 @@ pip install -r requirements.txt</code></pre>
 <h2 id="trouble">Troubleshooting</h2>
 <table>
 <tr><th>Problem</th><th>Fix</th></tr>
-<tr><td><code>Set BRAVE_SEARCH_API_KEY in .env</code></td><td>Create <code>.env</code> with your key, or run with <code>--engine ddg</code>.</td></tr>
+<tr><td><code>can't open file ...lead_scraper_v2.py</code></td><td>You are in the wrong folder. <code>cd</code> into the project folder or give the full path to the script.</td></tr>
+<tr><td><code>ModuleNotFoundError: No module named 'ddgs'</code></td><td>Run <code>pip install -r requirements.txt</code>.</td></tr>
+<tr><td><code>invalid --pages</code></td><td>Use a number (<code>3</code>) or a range (<code>2-4</code>) with the start no larger than the end.</td></tr>
+<tr><td><code>Set BRAVE_SEARCH_API_KEY in .env</code></td><td>Only appears with <code>--engine brave</code>. Create <code>.env</code> with your key, or use the default <code>--engine ddg</code>.</td></tr>
 <tr><td><code>[web error] 401/403</code></td><td>The key is wrong or the plan is inactive. Check the dashboard.</td></tr>
 <tr><td><code>[web error] 429</code></td><td>Rate limit. Lower <code>--pages</code> and retry later.</td></tr>
 <tr><td><code>[ddg error] ... Ratelimit</code></td><td>DuckDuckGo is throttling you. The tool retries automatically; for large runs wait and try again, or use Brave.</td></tr>

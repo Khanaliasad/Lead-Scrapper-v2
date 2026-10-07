@@ -157,10 +157,23 @@ def brave_headers(key: str):
 ENGINE = "brave"
 DDG_DELAY = 3.0
 
-def ddg_search(query: str, pages=2, count=20):
+def parse_pages(s: str):
+    try:
+        if "-" in s:
+            a, b = s.split("-", 1)
+            start, end = int(a), int(b)
+        else:
+            start, end = 1, int(s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid --pages '{s}' (use N or START-END, e.g. 3 or 2-4)")
+    if start < 1 or end < start:
+        raise argparse.ArgumentTypeError(f"invalid --pages '{s}' (need 1 <= START <= END)")
+    return start, end
+
+def ddg_search(query: str, pages=(1, 2), count=20):
     from ddgs import DDGS
     out = []
-    for page in range(1, pages + 1):
+    for page in range(pages[0], pages[1] + 1):
         results = []
         for attempt in range(3):
             try:
@@ -186,15 +199,15 @@ def ddg_search(query: str, pages=2, count=20):
             break
     return out
 
-def web_search(key: str, query: str, pages=2, count=20):
+def web_search(key: str, query: str, pages=(1, 2), count=20):
     if ENGINE == "ddg":
         return ddg_search(query, pages, count)
     out = []
-    for page in range(pages):
+    for page in range(pages[0], pages[1] + 1):
         params = {
             "q": query,
             "count": min(count, 20),
-            "offset": page,
+            "offset": page - 1,
             "country": "PK",
             "search_lang": "en",
             "safesearch": "moderate",
@@ -230,23 +243,25 @@ def local_search(key: str, city: str, category: str):
     except requests.RequestException:
         return []
 
-def make_queries(city, category):
+def make_queries(city, category, platform="both"):
     phrases = [
         '"DM to order"', '"WhatsApp to order"', '"order via WhatsApp"',
         '"cash on delivery"', '"COD available"', '"delivery all over Pakistan"',
         '"PKR"', '"inbox to order"',
     ]
+    sites = {"instagram": ["instagram.com"], "facebook": ["facebook.com"],
+             "both": ["instagram.com", "facebook.com"]}[platform]
     qs = []
     for phrase in phrases:
-        qs.append(f'site:instagram.com "{city}" "{category}" {phrase}')
-        qs.append(f'site:facebook.com "{city}" "{category}" {phrase}')
-    qs.append(f'site:instagram.com "{city}" "{category}"')
-    qs.append(f'site:facebook.com "{city}" "{category}"')
+        for s in sites:
+            qs.append(f'site:{s} "{city}" "{category}" {phrase}')
+    for s in sites:
+        qs.append(f'site:{s} "{city}" "{category}"')
     return qs
 
-def discover(key, city, category, pages, per_query):
+def discover(key, city, category, pages, per_query, platform="both"):
     leads = {}
-    for q in make_queries(city, category):
+    for q in make_queries(city, category, platform):
         print(f"[search] {q}")
         for r in web_search(key, q, pages=pages, count=per_query):
             url = clean_url(r.get("url", ""))
@@ -372,7 +387,7 @@ def website_enrich(key, lead: Lead):
     # Search exact business name and city for an independent domain.
     if lead.business_name:
         q = f'"{lead.business_name}" "{lead.city}"'
-        for r in web_search(key, q, pages=1, count=10):
+        for r in web_search(key, q, pages=(1, 1), count=10):
             h = host(r.get("url", ""))
             if h and h not in BLACKLIST_HOSTS:
                 candidates.add(h)
@@ -447,10 +462,13 @@ def final_score(lead: Lead):
     lead.lead_score = max(0, min(100, s))
     return lead
 
+def lead_key(l: Lead) -> str:
+    return (l.instagram_url or l.facebook_url or l.business_name).lower().strip()
+
 def merge(leads):
     merged = {}
     for l in leads:
-        key = (l.instagram_url or l.facebook_url or l.business_name).lower().strip()
+        key = lead_key(l)
         if not key:
             continue
         if key not in merged:
@@ -470,9 +488,20 @@ def merge(leads):
                 a.social_selling_score = l.social_selling_score
     return list(merged.values())
 
+def db_keys(con) -> set:
+    return {r[0] for r in con.execute("SELECT key FROM leads")}
+
+def load_all_leads(con):
+    fields = set(Lead.__dataclass_fields__)
+    out = []
+    for (data,) in con.execute("SELECT data FROM leads"):
+        d = json.loads(data)
+        out.append(Lead(**{k: v for k, v in d.items() if k in fields}))
+    return out
+
 def save_db(con, leads):
     for l in leads:
-        key = (l.instagram_url or l.facebook_url or l.business_name).lower().strip()
+        key = lead_key(l)
         if not key:
             continue
         con.execute(
@@ -515,13 +544,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cities", nargs="+", default=["Karachi"])
     ap.add_argument("--categories", nargs="+", default=["clothing"])
-    ap.add_argument("--pages", type=int, default=2)
+    ap.add_argument("--pages", type=parse_pages, default=(1, 2), metavar="N|START-END",
+                    help="search pages: 3 = pages 1-3, 2-4 = pages 2 to 4 (default 1-2)")
     ap.add_argument("--per-query", type=int, default=20)
     ap.add_argument("--output", default="leads.csv")
     ap.add_argument("--json-output", default="")
     ap.add_argument("--db", default="leads.sqlite")
-    ap.add_argument("--engine", choices=["brave", "ddg"], default="brave",
+    ap.add_argument("--engine", choices=["brave", "ddg"], default="ddg",
                     help="brave = Brave API (needs key); ddg = free DuckDuckGo, no key, slower")
+    ap.add_argument("--platform", choices=["instagram", "facebook", "both"], default="both",
+                    help="which social site to search (default: both)")
     ap.add_argument("--skip-local", action="store_true")
     ap.add_argument("--skip-website", action="store_true")
     args = ap.parse_args()
@@ -544,11 +576,15 @@ def main():
         for category in args.categories:
             print(f"\n=== {city} / {category} ===")
             all_leads.extend(
-                discover(key, city, category, args.pages, args.per_query)
+                discover(key, city, category, args.pages, args.per_query, args.platform)
             )
 
     all_leads = merge(all_leads)
-    print(f"[discovery] {len(all_leads)} unique social profiles")
+    con = load_db(args.db)
+    known = db_keys(con)
+    found = len(all_leads)
+    all_leads = [x for x in all_leads if lead_key(x) not in known]
+    print(f"[discovery] {found} unique profiles, {found - len(all_leads)} already in DB, {len(all_leads)} new")
 
     for i, lead in enumerate(all_leads, 1):
         print(f"[enrich {i}/{len(all_leads)}] {lead.business_name}")
@@ -560,12 +596,11 @@ def main():
         final_score(lead)
         time.sleep(0.1)
 
-    all_leads = merge(all_leads)
-    all_leads.sort(key=lambda x: x.lead_score, reverse=True)
-
-    con = load_db(args.db)
-    save_db(con, all_leads)
+    new_leads = merge(all_leads)
+    save_db(con, new_leads)
+    all_leads = load_all_leads(con)
     con.close()
+    all_leads.sort(key=lambda x: x.lead_score, reverse=True)
 
     write_csv(all_leads, args.output)
     no_site, with_site = split_leads(all_leads)
@@ -582,7 +617,8 @@ def main():
     )
 
     print("\n========== DONE ==========")
-    print(f"Total leads: {len(all_leads)}")
+    print(f"New leads this run: {len(new_leads)}")
+    print(f"Total leads (all runs): {len(all_leads)}")
     print(f"Strong no-website leads: {strong}")
     print(f"CSV (all): {args.output}")
     print(f"No-website: {len(no_site)} | With website: {len(with_site)}")
