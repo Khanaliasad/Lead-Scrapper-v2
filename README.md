@@ -2,7 +2,7 @@
 
 Finds Pakistani businesses that sell through **Instagram / Facebook** and appear to have **no website**. These are prospects for web, ecommerce and SaaS services.
 
-> A visual version of this guide is in `GUIDE.html` (open it in any browser).
+> A visual version of this guide is in `guide.html` (open it in any browser).
 
 ## Purpose
 
@@ -140,5 +140,5 @@ lead_scraper_v2.py   main script
 requirements.txt     dependencies
 .env.example         template for the Brave key
 config_examples.txt  example commands
-GUIDE.html           visual user guide
+guide.html           visual user guide
 ```
