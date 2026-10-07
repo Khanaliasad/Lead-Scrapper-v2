@@ -12,7 +12,7 @@ It does **not** log in to Instagram/Facebook, bypass bot protection, or use priv
 
 ## How it works
 
-1. **Discover** – for each city × category it builds 18 queries (8 buying phrases × Instagram and Facebook, plus 2 plain queries), e.g. `site:instagram.com "Karachi" "clothing" "DM to order"`. `--platform instagram|facebook` searches one site only (9 queries), and `--pages` selects which result pages are fetched.
+1. **Discover** – for each city × category it builds 170 queries (84 buying and sale phrases × Instagram and Facebook, plus 2 plain queries; the list is in `make_queries`), e.g. `site:instagram.com "Karachi" "clothing" "DM to order"`. `--platform instagram|facebook` searches one site only (85 queries), and `--pages` selects which result pages are fetched.
 2. **Extract** – from each result it keeps real profile URLs only (posts/reels/stories are dropped) and pulls the business name, Pakistani mobile number (03xx / +92 3xx), email and WhatsApp number from the title and snippets.
 3. **Merge** – the same profile found by several queries becomes one lead.
 4. **Skip known** – profiles already in the SQLite database from earlier runs are dropped, so only new profiles are enriched and existing leads are never overwritten.
@@ -119,7 +119,7 @@ Columns: `business_name`, `instagram_url`, `facebook_url`, `other_social_url`, `
 
 ## Cost estimate (Brave)
 
-Requests ≈ 18 × number of pages per city/category pair (9 × with `--platform instagram` or `facebook`), plus ~2 per new lead (local + website search). Leads already in the database cost nothing on later runs. A 1-city/1-category test with `--pages 1` is ~100 requests (~$0.50). The full 8-city × 9-category scan is ~8,000+ requests (~$40). Use `--skip-local` and scale one city at a time.
+Requests ≈ 170 × number of pages per city/category pair (85 × with `--platform instagram` or `facebook`), plus ~2 per new lead (local + website search). Leads already in the database cost nothing on later runs. A 1-city/1-category test with `--pages 1` is ~250 requests (~$1.25). The full 8-city × 9-category scan with `--pages 2` is ~30,000 requests (~$150). Use `--skip-local` and scale one city at a time.
 
 ## Limitations
 

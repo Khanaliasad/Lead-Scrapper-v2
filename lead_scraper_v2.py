@@ -40,13 +40,24 @@ ORDER_TERMS = [
     "whatsapp to order", "whatsapp order", "order on whatsapp",
     "order via whatsapp", "inbox to order", "message to order",
     "cash on delivery", "cod available", "cod",
+    "order now", "place your order", "book your order",
+    "dm for price", "dm for details", "dm for orders",
+    "inbox for price", "inbox us", "call or whatsapp", "whatsapp us",
+    "contact to order", "order ke liye", "order karne ke liye",
+    "inbox karein", "rabta karein", "pre order", "made to order",
 ]
 DELIVERY_TERMS = [
     "delivery all over pakistan", "delivery across pakistan",
     "nationwide delivery", "shipping all over pakistan",
     "ship across pakistan", "delivery available", "home delivery",
+    "free delivery", "nationwide shipping", "all pakistan delivery",
+    "delivery charges", "dispatch within",
 ]
-PRICE_TERMS = ["pkr", "rs.", "rs ", "price", "prices", "starting from"]
+PRICE_TERMS = [
+    "pkr", "rs.", "rs ", "price", "prices", "starting from",
+    "only rs", "sale", "discount", "% off", "special offer", "buy 1 get 1",
+    "buy one get one", "best price", "lowest price", "price drop",
+]
 
 PHONE_RE = re.compile(
     r"(?<!\d)(?:(?:\+92|0092)\s*|0)\s*3\d{2}[\s\-]?\d{3}[\s\-]?\d{4}(?!\d)"
@@ -245,9 +256,37 @@ def local_search(key: str, city: str, category: str):
 
 def make_queries(city, category, platform="both"):
     phrases = [
+        # original
         '"DM to order"', '"WhatsApp to order"', '"order via WhatsApp"',
         '"cash on delivery"', '"COD available"', '"delivery all over Pakistan"',
         '"PKR"', '"inbox to order"',
+        # ordering
+        '"order now"', '"place your order"', '"book your order"',
+        '"DM for price"', '"DM for details"', '"DM for orders"',
+        '"inbox for price"', '"inbox us"', '"message us to order"',
+        '"call or WhatsApp"', '"WhatsApp us"', '"contact to order"',
+        '"order ke liye"', '"order karne ke liye"', '"inbox karein"', '"rabta karein"',
+        # payment and delivery
+        '"advance payment"', '"easypaisa"', '"jazzcash"', '"bank transfer"',
+        '"free delivery"', '"delivery charges"', '"nationwide shipping"',
+        '"all Pakistan delivery"', '"courier"', '"TCS"', '"Leopards"', '"Trax"',
+        '"delivery in 3-5 days"', '"dispatch within"',
+        # pricing and stock
+        '"Rs."', '"only Rs"', '"limited stock"', '"in stock"', '"restocked"',
+        '"new arrival"', '"new collection"', '"pre order"', '"made to order"',
+        '"customized"',
+        # sale and discounts
+        '"sale"', '"sale sale sale"', '"flat 20% off"', '"flat 50% off"',
+        '"up to 50% off"', '"discount"', '"discount offer"', '"special offer"',
+        '"limited time offer"', '"clearance sale"', '"end of season sale"',
+        '"eid sale"', '"summer sale"', '"winter sale"', '"buy 1 get 1"',
+        '"buy one get one"', '"big sale"', '"mega sale"', '"on sale now"',
+        '"price drop"', '"best price"', '"lowest price"', '"offer ends"',
+        '"hurry up"', '"grab now"', '"while stocks last"',
+        # small-seller identity
+        '"home based"', '"home business"', '"small business"', '"online store"',
+        '"shop online"', '"online shopping Pakistan"', '"online boutique"',
+        '"handmade"', '"locally made"', '"women owned"',
     ]
     sites = {"instagram": ["instagram.com"], "facebook": ["facebook.com"],
              "both": ["instagram.com", "facebook.com"]}[platform]

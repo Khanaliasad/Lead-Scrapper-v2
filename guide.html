@@ -55,7 +55,7 @@ footer{margin-top:48px;color:var(--muted);font-size:.9rem}
 
 <h2 id="how">How it works</h2>
 <ol class="steps">
-  <li><b>Discover.</b> For every city &times; category it builds 18 queries: 8 buying phrases on Instagram and on Facebook, plus 2 plain queries. With <code>--platform instagram</code> or <code>facebook</code> only that site is searched (9 queries). Only the result pages you choose with <code>--pages</code> are fetched. Example query: <code>site:instagram.com "Karachi" "clothing" "DM to order"</code></li>
+  <li><b>Discover.</b> For every city &times; category it builds 170 queries: 84 buying phrases (ordering, payment, delivery, pricing, sale and discount, and small-seller wording, including Roman Urdu) on Instagram and on Facebook, plus 2 plain queries. With <code>--platform instagram</code> or <code>facebook</code> only that site is searched (85 queries). The phrase list is in <code>make_queries</code> in the script. Only the result pages you choose with <code>--pages</code> are fetched. Example query: <code>site:instagram.com "Karachi" "clothing" "DM to order"</code></li>
   <li><b>Extract.</b> Keeps real profile URLs only (posts, reels and stories are dropped) and pulls the business name, Pakistani mobile number (03xx or +92 3xx), email and WhatsApp number from titles and snippets.</li>
   <li><b>Merge.</b> The same profile found by several queries becomes one lead.</li>
   <li><b>Skip known.</b> Profiles already stored in the SQLite database from earlier runs are dropped, so only new profiles are enriched and existing leads are never overwritten.</li>
@@ -156,12 +156,12 @@ pip install -r requirements.txt</code></pre>
 <p>Starts from the social score. No website <b>+15</b>; website found <b>&minus;30</b>; ecommerce site <b>&minus;70</b>; WhatsApp number +5; local match +5. A <b>strong lead</b> is <code>NO_WEBSITE_LIKELY</code> with a score of 60 or more.</p>
 
 <h2 id="cost">Cost estimate (Brave)</h2>
-<p>Requests &asymp; 18 &times; number of pages per city/category pair (9 &times; with <code>--platform instagram</code> or <code>facebook</code>), plus about 2 per new lead (local lookup and website search). Figures assume both platforms and about 40 leads per pair, which is a guess. Leads already in the database cost nothing on later runs.</p>
+<p>Requests &asymp; 170 &times; number of pages per city/category pair (85 &times; with <code>--platform instagram</code> or <code>facebook</code>), plus about 2 per new lead (local lookup and website search). Figures assume both platforms and about 40 leads per pair, which is a guess. Leads already in the database cost nothing on later runs.</p>
 <table>
 <tr><th>Run</th><th>Requests</th><th>Approx. cost</th></tr>
-<tr><td>1 city, 1 category, <code>--pages 1</code></td><td>~100</td><td>~$0.50</td></tr>
-<tr><td>1 city, 5 categories, <code>--pages 2</code></td><td>~700</td><td>~$3.50</td></tr>
-<tr><td>8 cities &times; 9 categories, <code>--pages 2</code></td><td>~8,400</td><td>~$40</td></tr>
+<tr><td>1 city, 1 category, <code>--pages 1</code></td><td>~250</td><td>~$1.25</td></tr>
+<tr><td>1 city, 5 categories, <code>--pages 2</code></td><td>~2,100</td><td>~$10</td></tr>
+<tr><td>8 cities &times; 9 categories, <code>--pages 2</code></td><td>~30,000</td><td>~$150</td></tr>
 </table>
 <p>Use <code>--skip-local</code>, <code>--platform instagram</code>, scale one city at a time, and set a spending cap. <code>--engine ddg</code> costs nothing.</p>
 
